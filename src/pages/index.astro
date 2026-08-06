@@ -1,0 +1,137 @@
+---
+// src/pages/index.astro
+import Layout from '../layouts/Layout.astro';
+import { Image } from 'astro:assets'; 
+
+import imgBanner from '../assets/banner-portada.png';
+import imgVestido from '../assets/vestido-rosa.png';
+import imgBlusa from '../assets/blusa-blanca.png';
+import imgChaqueta from '../assets/chaqueta-denim.png';
+
+let productos = [
+  { 
+    id: 1, 
+    nombre: 'Vestido Primavera Rosa', 
+    descripcion: 'Vestido largo y elegante, ideal para destacar con frescura y modernidad.', 
+    precio: 45.99, 
+    imagen: imgVestido 
+  },
+  { 
+    id: 2, 
+    nombre: 'Blusa Minimalista Blanca', 
+    descripcion: 'Blusa clásica de corte impecable, perfecta para un look casual u oficina.', 
+    precio: 29.99, 
+    imagen: imgBlusa 
+  },
+  { 
+    id: 3, 
+    nombre: 'Chaqueta Pastel Denim', 
+    descripcion: 'Casaca ligera de mezclilla con un calce moderno y sofisticado.', 
+    precio: 59.99, 
+    imagen: imgChaqueta 
+  }
+];
+---
+
+<Layout title="Moda Femenina Minimalista">
+	
+	<!-- Hero / Banner Principal -->
+	<section class="relative bg-neutral-900 py-32 md:py-48 px-4 flex items-center justify-center overflow-hidden">
+		<Image 
+			src={imgBanner} 
+			alt="Banner Mujercitas" 
+			class="absolute inset-0 w-full h-full object-cover object-center z-0 opacity-80" 
+			loading="eager"
+		/>
+		
+		<!-- Capa oscura sutil para asegurar un contraste perfecto con las nuevas letras blancas -->
+		<div class="absolute inset-0 bg-black/25 z-5"></div>
+		
+		<!-- Contenedor del texto cambiado a BLANCO (text-white) -->
+		<div class="relative z-10 text-center max-w-2xl mx-auto text-white">
+			<span class="text-[10px] md:text-xs uppercase tracking-[0.25em] text-neutral-800 bg-white px-4 py-1.5 rounded-full inline-block font-bold shadow-xs">Nueva Colección</span>
+			<h1 class="text-4xl md:text-6xl font-bold mt-5 mb-6 leading-tight font-['Playfair_Display'] text-white drop-shadow-md">Siente la sutileza de la moda minimalista</h1>
+			<p class="text-xs md:text-sm text-neutral-100 mb-8 font-light tracking-wide px-4 leading-relaxed drop-shadow-xs">Prendas diseñadas exclusivamente para destacar tu elegancia natural.</p>
+			<a href="#catalogo" class="inline-block bg-[#FFD1DC] text-neutral-800 px-8 py-4 text-[10px] tracking-widest uppercase font-bold hover:bg-white hover:scale-105 transition-all duration-300 rounded-sm shadow-md">Ver Catálogo</a>
+		</div>
+	</section>
+
+	<!-- Catálogo de Ropa -->
+	<section id="catalogo" class="max-w-7xl mx-auto px-4 py-20 scroll-mt-20">
+		<div class="text-center mb-16">
+			<h2 class="text-3xl font-bold text-neutral-800 tracking-wide">Modelos Destacados</h2>
+			<div class="w-12 h-[2px] bg-[#FFD1DC] mx-auto mt-4"></div>
+		</div>
+
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+			{productos.map((prod) => (
+				<div class="group flex flex-col bg-white border border-neutral-100 p-4 rounded-sm transition-all duration-300 hover:shadow-md">
+					
+					<div class="overflow-hidden bg-neutral-50 rounded-sm mb-5 aspect-[3/4]">
+						<Image 
+							src={prod.imagen} 
+							alt={prod.nombre} 
+							class="w-full h-full object-cover object-center group-hover:scale-103 transition-transform duration-500"
+						/>
+					</div>
+					
+					<div class="flex justify-between items-baseline mb-2">
+						<h3 class="font-sans font-semibold text-base text-neutral-800 tracking-wide">{prod.nombre}</h3>
+						<span class="font-sans font-medium text-neutral-600 shrink-0">${prod.precio}</span>
+					</div>
+					
+					<p class="text-xs text-neutral-400 font-light mb-5 flex-grow leading-relaxed">{prod.descripcion}</p>
+					
+					<button 
+						data-id={prod.id.toString()}
+						data-nombre={prod.nombre}
+						data-precio={prod.precio.toString()}
+						class="add-to-cart-btn w-full bg-neutral-50 text-neutral-800 py-3.5 text-[10px] tracking-widest uppercase font-semibold border border-neutral-200 hover:bg-[#FFD1DC] hover:border-[#FFD1DC] transition-all duration-300 rounded-sm"
+					>
+						Añadir al Carrito
+					</button>
+				</div>
+			))}
+		</div>
+	</section>
+</Layout>
+
+<script is:inline>
+	let carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
+
+	function actualizarContador() {
+		const countEl = document.getElementById('cart-count');
+		if(countEl) {
+			const totalItems = carrito.reduce((sum, item) => sum + item.cantidad, 0);
+			countEl.innerText = totalItems.toString();
+		}
+	}
+
+	const botones = document.querySelectorAll('.add-to-cart-btn');
+	botones.forEach(boton => {
+		boton.addEventListener('click', (e) => {
+			const target = e.currentTarget;
+			if (!target) return;
+			
+			const id = target.getAttribute('data-id');
+			const nombre = target.getAttribute('data-nombre');
+			const precio = parseFloat(target.getAttribute('data-precio') || '0');
+
+			const existe = carrito.find(item => item.id === id);
+			if (existe) {
+				existe.cantidad += 1;
+			} else {
+				carrito.push({ id, nombre, precio, cantidad: 1 });
+			}
+
+			localStorage.setItem('carrito', JSON.stringify(carrito));
+			actualizarContador();
+			
+			const textoOriginal = target.innerText;
+			target.innerText = "Agregado ✨";
+			setTimeout(() => { target.innerText = textoOriginal; }, 1000);
+		});
+	});
+
+	actualizarContador();
+</script>

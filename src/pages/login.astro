@@ -1,0 +1,85 @@
+---
+// src/pages/login.astro
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Iniciar Sesión">
+	<section class="max-w-md mx-auto px-4 py-20 flex-grow flex flex-col justify-center animate-fade-in">
+		
+		<!-- Contenedor del Formulario Minimalista -->
+		<div class="bg-white border border-neutral-100 p-8 rounded-sm shadow-xs">
+			<div class="text-center mb-8">
+				<h1 class="text-2xl font-bold text-neutral-800 tracking-wide font-['Playfair_Display']">Bienvenida a Mujercitas</h1>
+				<p class="text-xs text-neutral-400 font-light mt-1 uppercase tracking-widest">Ingresa tus datos para continuar</p>
+				<div class="w-8 h-[1px] bg-[#FFD1DC] mx-auto mt-4"></div>
+			</div>
+
+			<form id="login-form" class="space-y-5">
+				<div>
+					<label class="block text-[10px] uppercase tracking-widest text-neutral-400 font-bold mb-1">Correo Electrónico</label>
+					<input type="email" id="login-email" required placeholder="tuemail@ejemplo.com" class="w-full text-xs p-3 border border-neutral-200 rounded-sm bg-neutral-50/50 focus:outline-none focus:border-[#FFD1DC] transition-colors" />
+				</div>
+
+				<div>
+					<label class="block text-[10px] uppercase tracking-widest text-neutral-400 font-bold mb-1">Contraseña</label>
+					<input type="password" id="login-password" required placeholder="••••••••" class="w-full text-xs p-3 border border-neutral-200 rounded-sm bg-neutral-50/50 focus:outline-none focus:border-[#FFD1DC] transition-colors" />
+				</div>
+
+				<button type="submit" class="w-full bg-neutral-800 text-white py-4 text-xs tracking-widest uppercase font-bold hover:bg-[#FFD1DC] hover:text-neutral-800 transition-all duration-300 rounded-sm shadow-md mt-2">
+					Iniciar Sesión
+				</button>
+			</form>
+
+			<!-- Datos de ayuda rápidos en el pie del formulario -->
+			<div class="mt-6 pt-6 border-t border-neutral-100 text-center space-y-2">
+				<p class="text-[10px] text-neutral-400 font-light">💡 Cuenta de Administradora Maestra para pruebas:</p>
+				<div class="bg-neutral-50 p-2 rounded-xs text-[10px] font-mono text-neutral-600 inline-block text-left">
+					<strong>User:</strong> admin@mujercitas.com<br/>
+					<strong>Pass:</strong> admin123
+				</div>
+			</div>
+		</div>
+
+	</section>
+</Layout>
+
+<script is:inline>
+	// Sincroniza la burbuja del Navbar
+	let carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
+	const countEl = document.getElementById('cart-count');
+	if(countEl) {
+		countEl.innerText = carrito.reduce((sum, item) => sum + item.cantidad, 0).toString();
+	}
+
+	// Procesar el evento del Login
+	document.getElementById('login-form').addEventListener('submit', (e) => {
+		e.preventDefault();
+
+		const email = document.getElementById('login-email').value.trim();
+		const password = document.getElementById('login-password').value;
+
+		// EVALUACIÓN DE CREDENCIALES EXCLUSIVAS
+		if (email === 'admin@mujercitas.com' && password === 'admin123') {
+			// Guardamos una bandera temporal en la memoria del navegador para recordar que eres admin
+			localStorage.setItem('usuario_rol', 'admin');
+			
+			alert('✨ ¡Identidad Confirmada! Bienvenido Administrador. Redirigiéndote al Panel de Control...');
+			window.location.href = '/admin'; // Redirección automática al panel seguro
+		} else {
+			// Simulación para un cliente normal
+			localStorage.setItem('usuario_rol', 'user');
+			alert('🛍️ ¡Sesión iniciada con éxito como Cliente! Disfruta de nuestra colección completa.');
+			window.location.href = '/catalogo'; // Redirección automática al catálogo de compras
+		}
+	});
+</script>
+
+<style>
+	@keyframes fadeIn {
+		from { opacity: 0; transform: translateY(10px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+	.animate-fade-in {
+		animation: fadeIn 0.4s ease-out forwards;
+	}
+</style>

@@ -1,0 +1,240 @@
+---
+// src/pages/catalogo.astro
+import Layout from '../layouts/Layout.astro';
+import pool from '../lib/db.js';
+
+// 1. Intentamos traer los registros reales que has ido subiendo a tu MySQL local
+let prendasBase = [];
+try {
+  const [rows] = await pool.query('SELECT * FROM productos') as any;
+  if (rows && rows.length > 0) {
+    prendasBase = rows;
+  }
+} catch (error) {
+  console.log("Database fallback active.");
+}
+
+// 2. Si tu base de datos MySQL está completamente vacía, usamos esta base limpia de contingencia
+if (prendasBase.length === 0) {
+  prendasBase = [
+    { id: 1, nombre: 'Vestido Primavera Rosa', descripcion: 'Vestido largo y de una caída sutil espectacular.', precio: 45.99, imagen_url: '/imagenes/vestido-rosa.png' },
+    { id: 2, nombre: 'Blusa Minimalista Blanca', descripcion: 'Blusa clásica de lino premium con corte impecable.', precio: 29.99, imagen_url: '/imagenes/blusa-blanca.png' },
+    { id: 3, nombre: 'Chaqueta Pastel Denim', descripcion: 'Casaca ligera de mezclilla en tonalidades suaves.', precio: 59.99, imagen_url: '/imagenes/chaqueta-denim.png' },
+    { id: 4, nombre: 'Falta Minimalista Gris', descripcion: 'Falta de corte recto y tiro alto diseñada en un tejido suave.', precio: 34.99, imagen_url: '/imagenes/falda-minimal.png' }
+  ];
+}
+
+// 3. Multiplicación para rellenar tus 10 filas de 4 columnas (40 prendas en total)
+const FILAS_DESEADAS = 10;
+const COLUMNAS_POR_FILA = 4;
+const TOTAL_PRODUCTOS = FILAS_DESEADAS * COLUMNAS_POR_FILA;
+
+const productos = Array.from({ length: TOTAL_PRODUCTOS }, (_, i) => {
+  const prendaOriginal = prendasBase[i % prendasBase.length];
+  
+  // SOLUCIÓN: Lee directamente el nombre del archivo asignado desde el administrador de MySQL 
+  // Si por alguna razón el campo está vacío, le pone el banner de portada de respaldo
+  const urlImagenClean = prendaOriginal.imagen_url || '/imagenes/banner-portada.png';
+
+  return {
+    id: i + 1,
+    nombre: String(prendaOriginal.nombre) + " v" + String(Math.floor(i / prendasBase.length) + 1),
+    descripcion: prendaOriginal.descripcion,
+    precio: prendaOriginal.precio,
+    imagen: urlImagenClean
+  };
+});
+
+---
+
+<Layout title="Catálogo Exclusivo">
+	
+	<section class="bg-neutral-50 border-b border-neutral-100 py-12 px-4 text-center">
+		<div class="max-w-2xl mx-auto">
+			<h1 class="text-3xl md:text-4xl font-bold text-neutral-800 tracking-wide font-['Playfair_Display']">Colección Completa</h1>
+			<p class="text-xs text-neutral-400 font-light mt-2 tracking-widest uppercase">Explora nuestras exclusivas prendas seleccionadas</p>
+			<div class="w-8 h-[1px] bg-[#FFD1DC] mx-auto mt-4"></div>
+		</div>
+	</section>
+
+	<section id="catalogo" class="max-w-7xl mx-auto px-4 py-12 scroll-mt-20">
+		<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-12">
+			{productos.map((prod) => (
+				<div class="group flex flex-col bg-white border border-neutral-100 p-4 rounded-sm transition-all duration-300 hover:shadow-md animate-fade-in">
+					
+					<div class="product-card-img overflow-hidden bg-neutral-50 rounded-sm mb-5 aspect-[3/4] cursor-pointer relative" data-product={JSON.stringify({id: prod.id, nombre: prod.nombre, precio: prod.precio, descripcion: prod.descripcion, imagenes: [prod.imagen, prod.imagen, prod.imagen]})}>
+						<!-- Inyección directa de la ruta corregida en caliente -->
+						<img src={prod.imagen} alt={prod.nombre} class="w-full h-full object-cover object-center group-hover:scale-103 transition-transform duration-500" loading="lazy" />
+						<div class="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+							<span class="bg-white/90 backdrop-blur-xs text-neutral-800 text-[10px] tracking-widest uppercase font-semibold px-4 py-2 shadow-xs rounded-xs">Vista Rápida 👁️</span>
+						</div>
+					</div>
+					
+					<div class="flex justify-between items-baseline mb-2">
+						<h3 class="font-sans font-semibold text-sm text-neutral-800 tracking-wide truncate pr-2">{prod.nombre}</h3>
+						<span class="font-sans font-medium text-neutral-600 shrink-0 text-sm">${prod.precio}</span>
+					</div>
+					<p class="text-xs text-neutral-400 font-light mb-5 flex-grow line-clamp-2 leading-relaxed">{prod.descripcion}</p>
+					
+					<button data-id={prod.id.toString()} data-nombre={prod.nombre} data-precio={prod.precio.toString()} class="add-to-cart-btn w-full bg-neutral-50 text-neutral-800 py-3 text-[10px] tracking-widest uppercase font-semibold border border-neutral-200 hover:bg-[#FFD1DC] hover:border-[#FFD1DC] transition-all duration-300 rounded-sm">
+						Añadir al Carrito
+					</button>
+				</div>
+			))}
+		</div>
+	</section>
+
+	<!-- MODAL INTERACTIVO (VISTA RÁPIDA) -->
+	<div id="product-modal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+		<div class="bg-white w-full max-w-4xl rounded-sm shadow-2xl overflow-hidden relative max-h-[90vh] flex flex-col md:flex-row">
+			<button id="close-modal-btn" class="absolute top-4 right-4 text-neutral-400 hover:text-neutral-800 text-xl font-bold z-10 p-2">✕</button>
+			
+			<div class="w-full md:w-1/2 p-6 flex flex-col justify-between bg-neutral-50">
+				<div class="aspect-[3/4] w-full overflow-hidden rounded-sm bg-white border border-neutral-100 mb-4">
+					<img id="modal-main-img" src="" alt="" class="w-full h-full object-cover object-center" />
+				</div>
+				<div id="modal-thumbnails" class="flex gap-3 overflow-x-auto pb-2"></div>
+			</div>
+
+			<div class="w-full md:w-1/2 p-8 flex flex-col justify-between border-t md:border-t-0 md:border-l border-neutral-100">
+				<div class="mt-4">
+					<span class="text-[10px] uppercase tracking-widest text-[#4A4A4A] bg-[#FFD1DC]/30 px-3 py-1 rounded-full font-semibold">Exclusivo de Tienda</span>
+					<h2 id="modal-title" class="text-2xl md:text-3xl font-bold text-neutral-800 mt-4 mb-2 tracking-wide font-['Playfair_Display']"></h2>
+					<p id="modal-price" class="text-xl font-medium text-neutral-600 mb-6 font-sans"></p>
+					<div class="w-full h-[1px] bg-neutral-100 my-4"></div>
+					<h4 class="text-xs uppercase tracking-widest text-neutral-400 font-bold mb-2">Descripción del producto</h4>
+					<p id="modal-desc" class="text-xs md:text-sm text-neutral-500 font-light leading-relaxed mb-6"></p>
+				</div>
+
+				<div class="space-y-3 mb-4">
+					<button id="modal-add-btn" class="w-full bg-[#4A4A4A] text-white py-4 text-xs tracking-widest uppercase font-bold hover:bg-[#FFD1DC] hover:text-neutral-800 transition-all duration-300 rounded-sm shadow-md">
+						Añadir al Carrito
+					</button>
+					<button id="modal-buy-now-btn" class="w-full bg-white text-neutral-800 border border-neutral-300 py-4 text-xs tracking-widest uppercase font-bold hover:bg-neutral-50 transition-all duration-300 rounded-sm">
+						Comprar Ahora
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</Layout>
+
+<script is:inline>
+	let carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
+
+	function actualizarContador() {
+		const countEl = document.getElementById('cart-count');
+		if(countEl) {
+			const totalItems = carrito.reduce((sum, item) => sum + item.cantidad, 0);
+			countEl.innerText = totalItems.toString();
+		}
+	}
+
+	function agregarAlCarrito(id, nombre, precio) {
+		const existe = carrito.find(item => item.id === id);
+		if (existe) {
+			existe.cantidad += 1;
+		} else {
+			carrito.push({ id, nombre, precio, cantidad: 1 });
+		}
+		localStorage.setItem('carrito', JSON.stringify(carrito));
+		actualizarContador();
+	}
+
+	document.querySelectorAll('.add-to-cart-btn').forEach(boton => {
+		boton.addEventListener('click', (e) => {
+			const target = e.currentTarget;
+			const id = target.getAttribute('data-id');
+			const nombre = target.getAttribute('data-nombre');
+			const precio = parseFloat(target.getAttribute('data-precio') || '0');
+			agregarAlCarrito(id, nombre, precio);
+			
+			const textoOriginal = target.innerText;
+			target.innerText = "Agregado ✨";
+			setTimeout(() => { target.innerText = textoOriginal; }, 1000);
+		});
+	});
+
+	const modal = document.getElementById('product-modal');
+	const closeModalBtn = document.getElementById('close-modal-btn');
+	let productoSeleccionadoActual = null;
+
+	document.querySelectorAll('.product-card-img').forEach(card => {
+		card.addEventListener('click', (e) => {
+			const data = JSON.parse(e.currentTarget.getAttribute('data-product'));
+			productoSeleccionadoActual = data;
+
+			document.getElementById('modal-title').innerText = data.nombre;
+			document.getElementById('modal-price').innerText = `$${data.precio}`;
+			document.getElementById('modal-desc').innerText = data.descripcion;
+			
+			const mainImg = document.getElementById('modal-main-img');
+			mainImg.src = data.imagenes;
+			mainImg.alt = data.nombre;
+
+			const thumbnailsContainer = document.getElementById('modal-thumbnails');
+			thumbnailsContainer.innerHTML = '';
+			
+			data.imagenes.forEach((imgSrc, index) => {
+				const thumbBtn = document.createElement('button');
+				thumbBtn.className = `w-16 h-20 rounded-xs overflow-hidden border-2 shrink-0 transition-all ${index === 0 ? 'border-[#FFD1DC]' : 'border-transparent'}`;
+				thumbBtn.innerHTML = `<img src="${imgSrc}" class="w-full h-full object-cover" />`;
+				
+				thumbBtn.addEventListener('click', () => {
+					mainImg.src = imgSrc;
+document.querySelectorAll('#modal-thumbnails button').forEach(b => b.classList.remove('border-[#FFD1DC]'));
+thumbBtn.classList.add('border-[#FFD1DC]');
+});
+thumbnailsContainer.appendChild(thumbBtn);
+});
+modal.classList.remove('hidden');
+document.body.classList.add('overflow-hidden');
+});
+});
+closeModalBtn.addEventListener('click', () => {
+modal.classList.add('hidden');
+document.body.classList.remove('overflow-hidden');
+});
+modal.addEventListener('click', (e) => {
+if(e.target === modal) {
+modal.classList.add('hidden');
+document.body.classList.remove('overflow-hidden');
+}
+});
+document.getElementById('modal-add-btn').addEventListener('click', () => {
+if(productoSeleccionadoActual) {
+agregarAlCarrito(productoSeleccionadoActual.id.toString(), productoSeleccionadoActual.nombre, productoSeleccionadoActual.precio);
+const btn = document.getElementById('modal-add-btn');
+btn.innerText = "¡Añadido! 🛍️";
+btn.style.backgroundColor = "#FFD1DC";
+btn.style.color = "#4A4A4A";
+setTimeout(() => {
+btn.innerText = "Añadir al Carrito";
+btn.style.backgroundColor = "#4A4A4A";
+btn.style.color = "white";
+}, 1200);
+}
+});
+
+	document.getElementById('modal-buy-now-btn').addEventListener('click', () => {
+		if (productoSeleccionadoActual) {
+			agregarAlCarrito(productoSeleccionadoActual.id.toString(), productoSeleccionadoActual.nombre, productoSeleccionadoActual.precio);
+			alert(`🛒 ¡Procesando compra directa de: ${productoSeleccionadoActual.nombre}!`);
+		}
+	});
+
+	actualizarContador();
+</script>
+
+<!-- EL CSS DEBE VIVIR OBLIGATORIAMENTE AFUERA DEL SCRIPT EN UNA ETIQUETA STYLE -->
+<style>
+	@keyframes fadeIn {
+		from { opacity: 0; transform: translateY(10px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+	.animate-fade-in {
+		animation: fadeIn 0.4s ease-out forwards;
+	}
+</style>
+
+

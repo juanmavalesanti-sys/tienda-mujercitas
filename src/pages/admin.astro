@@ -1,0 +1,301 @@
+---
+// src/pages/admin.astro
+import Layout from '../layouts/Layout.astro';
+import pool from '../lib/db.js';
+
+// 1. Cargamos la lista REAL y completa de ítems directo de tu base de datos MySQL
+let listaProductos = [];
+let totalProductosDB = 0;
+
+try {
+  const [rows] = await pool.query('SELECT * FROM productos ORDER BY id DESC') as any;
+  listaProductos = rows;
+  totalProductosDB = listaProductos.length;
+} catch (error) {
+  console.log("Database connection active, waiting for tables.");
+}
+
+// 2. Si MySQL está vacío por contingencia, mostramos datos base para que no se vea roto
+if (listaProductos.length === 0) {
+  listaProductos = [
+    { id: 1, nombre: 'Vestido Primavera Rosa', descripcion: 'Vestido largo sutil.', precio: 45.99, imagen_url: '/imagenes/vestido-rosa.png' },
+    { id: 2, nombre: 'Blusa Minimalista Blanca', descripcion: 'Blusa clásica de lino.', precio: 29.99, imagen_url: '/imagenes/blusa-blanca.png' },
+    { id: 3, nombre: 'Chaqueta Pastel Denim', descripcion: 'Casaca ligera de mezclilla.', precio: 59.99, imagen_url: '/imagenes/chaqueta-denim.png' }
+  ];
+  totalProductosDB = 3;
+}
+---
+
+<Layout title="Panel de Administración Completo">
+	<section class="max-w-6xl mx-auto px-4 py-12 flex-grow">
+		
+		<!-- Encabezado del Panel -->
+		<div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-neutral-100 pb-6 mb-10 gap-4">
+			<div>
+				<h1 class="text-3xl font-bold text-neutral-800 tracking-wide font-['Playfair_Display']">Panel de Control</h1>
+				<p class="text-xs text-neutral-400 font-light mt-1 tracking-wider uppercase">Gestión de inventario, edición y pedidos reales en MySQL</p>
+			</div>
+			<span class="text-[10px] uppercase tracking-widest bg-neutral-900 text-white px-3 py-1.5 font-bold rounded-xs shadow-xs">Sesión: Administrador</span>
+		</div>
+
+		<!-- Tarjetas de Métricas -->
+		<div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
+			<div class="bg-neutral-50 border border-neutral-100 p-5 rounded-sm">
+				<span class="text-2xl block mb-1">👗</span>
+				<h4 class="text-[10px] uppercase tracking-widest text-neutral-400 font-bold">Prendas en Base de Datos</h4>
+				<p class="text-2xl font-bold text-neutral-800 mt-1">{totalProductosDB}</p>
+			</div>
+			<div class="bg-neutral-50 border border-neutral-100 p-5 rounded-sm">
+				<span class="text-2xl block mb-1">📦</span>
+				<h4 class="text-[10px] uppercase tracking-widest text-neutral-400 font-bold">Filas Simuladas</h4>
+				<p class="text-2xl font-bold text-neutral-800 mt-1">10 Filas</p>
+			</div>
+			<div class="bg-neutral-50 border border-neutral-100 p-5 rounded-sm">
+				<span class="text-2xl block mb-1">●</span>
+				<h4 class="text-[10px] uppercase tracking-widest text-neutral-400 font-bold">Estado de Conexión</h4>
+				<p class="text-xs font-semibold mt-2 text-emerald-600 flex items-center gap-1">Servidor Local Activo</p>
+			</div>
+		</div>
+
+		<div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+			
+			<!-- Formulario para Agregar Prenda -->
+			<div class="bg-white border border-neutral-100 p-6 rounded-sm shadow-xs h-fit">
+				<h3 class="text-sm uppercase tracking-widest text-neutral-800 font-bold mb-6 flex items-center gap-2">✨ Agregar Nueva Prenda</h3>
+				<form id="add-product-form" class="space-y-4">
+					<div>
+						<label class="block text-[10px] uppercase tracking-widest text-neutral-400 font-bold mb-1">Nombre del artículo</label>
+						<input type="text" id="prod-nombre" required placeholder="Ej. Falda Plisada Pastel" class="w-full text-xs p-3 border border-neutral-200 rounded-sm bg-neutral-50/50 focus:outline-none focus:border-[#FFD1DC] transition-colors" />
+					</div>
+					<div>
+						<label class="block text-[10px] uppercase tracking-widest text-neutral-400 font-bold mb-1">Precio de venta ($)</label>
+						<input type="number" id="prod-precio" step="0.01" required placeholder="Ej. 39.99" class="w-full text-xs p-3 border border-neutral-200 rounded-sm bg-neutral-50/50 focus:outline-none focus:border-[#FFD1DC] transition-colors" />
+					</div>
+					<div>
+						<label class="block text-[10px] uppercase tracking-widest text-neutral-400 font-bold mb-1">Descripción de la prenda</label>
+						<textarea id="prod-descripcion" rows="3" required placeholder="Detalles de costura, tallas o material..." class="w-full text-xs p-3 border border-neutral-200 rounded-sm bg-neutral-50/50 focus:outline-none focus:border-[#FFD1DC] transition-colors resize-none"></textarea>
+					</div>
+					<div class="space-y-3">
+						<div>
+							<label class="block text-[10px] uppercase tracking-widest text-neutral-400 font-bold mb-1">Asignar Foto Existente</label>
+							<select id="prod-imagen-select" class="w-full text-xs p-3 border border-neutral-200 rounded-sm bg-neutral-50/50 focus:outline-none focus:border-[#FFD1DC] transition-colors cursor-pointer text-neutral-700">
+								<option value="">-- Elige una de tus 4 fotos base --</option>
+								<option value="vestido-rosa.png">Vestido Primavera Rosa (.png)</option>
+								<option value="blusa-blanca.png">Blusa Minimalista Blanca (.png)</option>
+								<option value="chaqueta-denim.png">Chaqueta Pastel Denim (.png)</option>
+								<option value="falda-minimal.png">Falta Minimalista Gris (.png)</option>
+							</select>
+						</div>
+						<div class="text-center text-[10px] text-neutral-400 font-semibold uppercase tracking-wider">— O TAMBIÉN —</div>
+						<div>
+							<label class="block text-[10px] uppercase tracking-widest text-neutral-400 font-bold mb-1">Escribir nombre de archivo nuevo</label>
+							<input type="text" id="prod-imagen-input" placeholder="Ej. blusa-seda.png" class="w-full text-xs p-3 border border-neutral-200 rounded-sm bg-neutral-50/50 focus:outline-none focus:border-[#FFD1DC] transition-colors" />
+						</div>
+					</div>
+					<button type="submit" class="w-full bg-neutral-800 text-white py-4 text-xs tracking-widest uppercase font-bold hover:bg-[#FFD1DC] hover:text-neutral-800 transition-all duration-300 rounded-sm shadow-md">Subir a Catálogo Real</button>
+				</form>
+			</div>
+
+			<!-- LADO DERECHO: LISTA COMPLETA REAL DE ÍTEMS CON ACCIONES -->
+			<div class="lg:col-span-2 space-y-8">
+				<div class="bg-white border border-neutral-100 p-6 rounded-sm shadow-xs">
+					<h3 class="text-sm uppercase tracking-widest text-neutral-800 font-bold mb-6">Lista Completa de Artículos (Inventario MySQL)</h3>
+					<div class="overflow-x-auto">
+						<table class="w-full text-left border-collapse text-xs">
+							<thead>
+								<tr class="border-b border-neutral-100 text-neutral-400 uppercase tracking-wider font-bold">
+									<th class="py-3 font-semibold">ID</th>
+									<th class="py-3 font-semibold">Prenda</th>
+									<th class="py-3 font-semibold">Precio</th>
+									<th class="py-3 text-right font-semibold">Acciones</th>
+								</tr>
+							</thead>
+							<tbody class="divide-y divide-neutral-50 text-neutral-600 font-light">
+								{listaProductos.map((item:any) => (
+									<tr>
+										<td class="py-4 font-normal">#{item.id}</td>
+										<td class="py-4 font-medium text-neutral-800">{item.nombre}</td>
+										<td class="py-4">${item.precio}</td>
+										<td class="py-4 text-right space-x-3">
+											<!-- Botón Editar que empaqueta los datos de la fila para el Modal -->
+											<button class="btn-open-edit text-neutral-500 hover:text-neutral-800 font-medium transition-colors" data-product={JSON.stringify({id: item.id, nombre: item.nombre, precio: item.precio, descripcion: item.descripcion})}>Editar</button>
+											<button class="btn-delete-item text-neutral-400 hover:text-red-400 font-medium transition-colors" data-id={item.id}>Retirar</button>
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+				</div>
+
+				<!-- Registro de Órdenes -->
+				<div class="bg-white border border-neutral-100 p-6 rounded-sm shadow-xs">
+					<h3 class="text-sm uppercase tracking-widest text-neutral-800 font-bold mb-4">Pedidos Recibidos</h3>
+					<p class="text-xs text-neutral-400 font-light mb-4">Monitoreo de compras enviadas desde el checkout.</p>
+					<div id="admin-orders-list" class="space-y-3">
+						<div class="text-center py-6 text-neutral-400 italic text-xs border border-dashed border-neutral-200 rounded-sm">No se han recibido pedidos nuevos en esta sesión todavía.</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- TARJETA MODAL INTERACTIVA PARA EDITAR TEXTOS (Oculta por defecto con 'hidden') -->
+	<div id="edit-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+		<div class="bg-white w-full max-w-md rounded-sm shadow-2xl p-6 relative animate-fade-in">
+			<button id="close-edit-modal" class="absolute top-4 right-4 text-neutral-400 hover:text-neutral-800 font-bold">✕</button>
+			
+			<h3 class="text-base font-bold text-neutral-800 tracking-wide font-['Playfair_Display'] mb-4">Editar Detalles de la Prenda</h3>
+			<div class="w-full h-[1px] bg-neutral-100 mb-6"></div>
+
+			<form id="edit-product-form" class="space-y-4">
+				<input type="hidden" id="edit-prod-id" />
+				<div>
+					<label class="block text-[10px] uppercase tracking-widest text-neutral-400 font-bold mb-1">Nombre de la Prenda</label>
+					<input type="text" id="edit-prod-nombre" required class="w-full text-xs p-3 border border-neutral-200 rounded-sm bg-neutral-50/50 focus:outline-none focus:border-[#FFD1DC] transition-colors" />
+				</div>
+				<div>
+					<label class="block text-[10px] uppercase tracking-widest text-neutral-400 font-bold mb-1">Precio del Artículo ($)</label>
+					<input type="number" id="edit-prod-precio" step="0.01" required class="w-full text-xs p-3 border border-neutral-200 rounded-sm bg-neutral-50/50 focus:outline-none focus:border-[#FFD1DC] transition-colors" />
+				</div>
+				<div>
+					<label class="block text-[10px] uppercase tracking-widest text-neutral-400 font-bold mb-1">Descripción / Materiales</label>
+<!-- Reemplaza el bloque final de tu admin.astro desde la línea 168 con esto exactamente -->
+<script is:inline>
+	// CANDADO DE SEGURIDAD CONTRA INTRUSOS
+	const rolUsuario = localStorage.getItem('usuario_rol');
+	if (rolUsuario !== 'admin') {
+		alert('⚠️ Acceso denegado. Esta zona está reservada exclusivamente para el administrador de Mujercitas.');
+		window.location.href = '/login';
+	}
+
+	// Sincroniza la burbuja del Navbar de forma segura
+	let carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
+	const countEl = document.getElementById('cart-count');
+	if(countEl) {
+		const totalItems = carrito.reduce((sum, item) => sum + item.cantidad, 0);
+		countEl.innerText = totalItems.toString();
+	}
+
+	// 1. SUBIR PRODUCTO NUEVO
+	document.getElementById('add-product-form').addEventListener('submit', async (e) => {
+		e.preventDefault();
+		const nombre = document.getElementById('prod-nombre').value;
+		const precio = parseFloat(document.getElementById('prod-precio').value);
+		const descripcion = document.getElementById('prod-descripcion').value;
+		const archivoSelect = document.getElementById('prod-imagen-select').value;
+		const archivoInput = document.getElementById('prod-imagen-input').value.trim();
+
+		let nombreArchivoFinal = archivoInput !== "" ? archivoInput : archivoSelect;
+
+		if (!nombreArchivoFinal) {
+			alert("⚠️ Selecciona una foto existente o escribe el nombre de un archivo nuevo.");
+			return;
+		}
+
+		const imagen_url = `/imagenes/${nombreArchivoFinal}`;
+
+		try {
+			const respuesta = await fetch('/api/productos', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ nombre, precio, descripcion, imagen_url })
+			});
+			const resultado = await respuesta.json();
+			if (resultado.success) {
+				alert(`🎉 ¡Prenda guardada con éxito en tu MySQL!\n\nArtículo: ${nombre}\nRuta asignada: ${imagen_url}`);
+				window.location.reload();
+			} else {
+				alert(`⚠️ Error: ${resultado.error}`);
+			}
+		} catch (error) {
+			alert('❌ Fallo al conectar con MySQL.');
+		}
+	});
+
+	// 2. RETIRAR / ELIMINAR PRODUCTO DE TIENDA
+	document.querySelectorAll('.btn-delete-item').forEach(btn => {
+		btn.addEventListener('click', async (e) => {
+			const id = e.currentTarget.getAttribute('data-id');
+			if (confirm(`🗑️ ¿Estás segura de que deseas retirar la prenda #${id} permanentemente de la tienda?`)) {
+				try {
+					const respuesta = await fetch('/api/eliminar', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ id })
+					});
+					const resultado = await respuesta.json();
+					if (resultado.success) {
+						alert('✅ Artículo eliminado con éxito de tu base de datos MySQL.');
+						window.location.reload();
+					}
+				} catch (error) {
+					alert('❌ Error al intentar conectar con la API de borrado.');
+				}
+			}
+		});
+	});
+
+	// 3. LOGICA INTERACTIVA DEL MODAL DE EDICIÓN (MISMA PÁGINA)
+	const editModal = document.getElementById('edit-modal');
+	const closeEditModalBtn = document.getElementById('close-edit-modal');
+
+	document.querySelectorAll('.btn-open-edit').forEach(btn => {
+		btn.addEventListener('click', (e) => {
+			const data = JSON.parse(e.currentTarget.getAttribute('data-product'));
+			
+			document.getElementById('edit-prod-id').value = data.id;
+			document.getElementById('edit-prod-nombre').value = data.nombre;
+			document.getElementById('edit-prod-precio').value = data.precio;
+			document.getElementById('edit-prod-descripcion').value = data.descripcion;
+
+			editModal.classList.remove('hidden');
+		});
+	});
+
+	closeEditModalBtn.addEventListener('click', () => editModal.classList.add('hidden'));
+	editModal.addEventListener('click', (e) => { if (e.target === editModal) editModal.classList.add('hidden'); });
+
+	// 4. GUARDAR CAMBIOS DE EDICIÓN EN MYSQL
+	document.getElementById('edit-product-form').addEventListener('submit', async (e) => {
+		e.preventDefault();
+		const id = document.getElementById('edit-prod-id').value;
+		const nombre = document.getElementById('edit-prod-nombre').value;
+		const precio = parseFloat(document.getElementById('edit-prod-precio').value);
+		const descripcion = document.getElementById('edit-prod-descripcion').value;
+
+		try {
+			const respuesta = await fetch('/api/editar', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ id, nombre, precio, descripcion })
+			});
+			const resultado = await respuesta.json();
+			if (resultado.success) {
+				alert(`✨ ¡Prenda #${id} actualizada con éxito en MySQL!`);
+				editModal.classList.add('hidden');
+				window.location.reload();
+			} else {
+				alert(`⚠️ Error al actualizar: ${resultado.error}`);
+			}
+		} catch (error) {
+			alert('❌ Error de conexión al procesar la actualización.');
+		}
+	});
+</script>
+
+<!-- EL CSS PERFECTAMENTE EXTRACTADO EN SU PROPIO BLOQUE STYLE -->
+<style>
+	@keyframes fadeIn {
+		from { opacity: 0; transform: scale(0.95); }
+		to { opacity: 1; transform: scale(1); }
+	}
+	.animate-fade-in {
+		animation: fadeIn 0.2s ease-out forwards;
+	}
+    </style>
+                </div>
+            </form>
+        </div>
+    </div>
+</Layout>

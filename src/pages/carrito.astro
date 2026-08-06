@@ -1,0 +1,211 @@
+---
+// src/pages/carrito.astro
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Mi Carrito de Compras">
+	<section class="max-w-4xl mx-auto px-4 py-16 flex-grow">
+		
+		<!-- Encabezado de la página -->
+		<div class="text-center mb-12">
+			<h1 class="text-3xl font-bold text-neutral-800 tracking-wide font-['Playfair_Display']">Tu Bolsa de Compras</h1>
+			<div class="w-12 h-[2px] bg-[#FFD1DC] mx-auto mt-3"></div>
+		</div>
+
+		<!-- CONTENEDOR PRINCIPAL DEL CARRITO -->
+		<div id="cart-container" class="grid grid-cols-1 lg:grid-cols-3 gap-8 hidden">
+			
+			<!-- Lado Izquierdo: Lista de prendas de ropa añadidas -->
+			<div class="lg:grid-cols-1 lg:col-span-2 space-y-4">
+				<div id="cart-items-list" class="divide-y divide-neutral-100 bg-white border border-neutral-100 p-4 rounded-sm shadow-xs">
+					<!-- Los productos se inyectarán aquí dinámicamente mediante JavaScript -->
+				</div>
+				
+				<!-- Botón para limpiar toda la bolsa -->
+				<button id="clear-cart-btn" class="text-xs uppercase tracking-widest text-neutral-400 hover:text-red-400 font-semibold transition-colors py-2 flex items-center gap-1">
+					🗑️ Vaciar bolsa de compras
+				</button>
+			</div>
+
+			<!-- Lado Derecho: Tarjeta del Resumen de Compra -->
+			<div class="bg-neutral-50 border border-neutral-100 p-6 rounded-sm h-fit sticky top-24">
+				<h3 class="text-xs uppercase tracking-widest text-neutral-400 font-bold mb-4">Resumen del pedido</h3>
+				
+				<div class="space-y-3 text-sm">
+					<div class="flex justify-between text-neutral-500 font-light">
+						<span>Total prendas:</span>
+						<span id="summary-count">0</span>
+					</div>
+					<div class="flex justify-between text-neutral-500 font-light">
+						<span>Envío estimado:</span>
+						<span class="text-emerald-600 font-medium">Gratis</span>
+					</div>
+					<div class="w-full h-[1px] bg-neutral-200/60 my-2"></div>
+					<div class="flex justify-between text-base font-bold text-neutral-800">
+						<span>Total final:</span>
+						<span id="summary-total">$0.00</span>
+					</div>
+				</div>
+
+				<!-- Formulario sutil de datos mínimos para simular el checkout -->
+				<div class="mt-6 pt-6 border-t border-neutral-200/60 space-y-3">
+					<h4 class="text-[10px] uppercase tracking-widest text-neutral-400 font-bold">Datos de entrega</h4>
+					<input type="text" id="checkout-name" placeholder="Nombre completo" class="w-full text-xs p-3 border border-neutral-200 rounded-sm bg-white focus:outline-none focus:border-[#FFD1DC] transition-colors" />
+					<input type="tel" id="checkout-phone" placeholder="Teléfono de contacto" class="w-full text-xs p-3 border border-neutral-200 rounded-sm bg-white focus:outline-none focus:border-[#FFD1DC] transition-colors" />
+				</div>
+
+				<button id="checkout-btn" class="w-full bg-neutral-800 text-white py-4 text-xs tracking-widest uppercase font-bold hover:bg-[#FFD1DC] hover:text-neutral-800 transition-all duration-300 rounded-sm shadow-md mt-6">
+					Finalizar Compra
+				</button>
+			</div>
+		</div>
+
+		<!-- VISTA ALTERNATIVA: Bolsa vacía (Se muestra si el localStorage no tiene nada) -->
+		<div id="empty-cart-view" class="text-center py-20 bg-neutral-50/50 border border-dashed border-neutral-200 rounded-sm max-w-xl mx-auto hidden">
+			<span class="text-4xl block mb-4">🛍️</span>
+			<h2 class="text-lg font-medium text-neutral-700 mb-2">Tu bolsa de compras está vacía</h2>
+			<p class="text-xs text-neutral-400 font-light mb-6">Explora nuestra colección y añade tus prendas favoritas.</p>
+			<a href="/catalogo" class="inline-block bg-neutral-800 text-white px-6 py-3 text-[10px] tracking-widest uppercase font-semibold hover:bg-[#FFD1DC] hover:text-neutral-800 transition-all duration-300 rounded-sm shadow-sm">Ir al catálogo</a>
+		</div>
+
+	</section>
+</Layout>
+
+<script is:inline>
+	// Leer el estado actual del carrito guardado en el navegador
+	let carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
+
+	// Elementos del DOM de la página
+	const cartContainer = document.getElementById('cart-container');
+	const emptyView = document.getElementById('empty-cart-view');
+	const itemsListContainer = document.getElementById('cart-items-list');
+	const summaryCount = document.getElementById('summary-count');
+	const summaryTotal = document.getElementById('summary-total');
+
+	// Sincroniza la burbuja del menú de navegación
+	function actualizarContadorNavbar() {
+		const countEl = document.getElementById('cart-count');
+		if(countEl) {
+			const totalItems = carrito.reduce((sum, item) => sum + item.cantidad, 0);
+			countEl.innerText = totalItems.toString();
+		}
+	}
+
+	// Renderiza la lista completa de prendas de ropa añadidas
+	function renderizarCarrito() {
+		actualizarContadorNavbar();
+
+		if (carrito.length === 0) {
+			cartContainer.classList.add('hidden');
+			emptyView.classList.remove('hidden');
+			return;
+		}
+
+		cartContainer.classList.remove('hidden');
+		emptyView.classList.add('hidden');
+		itemsListContainer.innerHTML = ''; // Limpiar renderizado anterior
+
+		let totalAcumulado = 0;
+		let prendasTotales = 0;
+
+		carrito.forEach((item, index) => {
+			const subtotalItem = item.precio * item.cantidad;
+			totalAcumulado += subtotalItem;
+			prendasTotales += item.cantidad;
+
+			// Crear la hilera estructural para la prenda
+			const itemRow = document.createElement('div');
+			itemRow.className = "flex items-center justify-between py-4 first:pt-0 last:pb-0 gap-4";
+			itemRow.innerHTML = `
+				<div class="flex-grow">
+					<h3 class="font-sans font-semibold text-sm text-neutral-800 tracking-wide">${item.nombre}</h3>
+					<p class="text-xs text-neutral-400 font-light mt-0.5">Precio unitario: $${item.precio}</p>
+				</div>
+				
+				<!-- Controladores cuantitativos (Sumar, Restar, Cantidad) -->
+				<div class="flex items-center border border-neutral-200 rounded-sm bg-neutral-50">
+					<button class="btn-restar px-3 py-1.5 text-xs text-neutral-500 hover:bg-neutral-200 transition-colors font-bold" data-index="${index}">-</button>
+					<span class="px-2 text-xs font-semibold text-neutral-700 min-w-[20px] text-center">${item.cantidad}</span>
+					<button class="btn-sumar px-3 py-1.5 text-xs text-neutral-500 hover:bg-neutral-200 transition-colors font-bold" data-index="${index}">+</button>
+				</div>
+				
+				<div class="text-right min-w-[80px]">
+					<span class="font-sans font-medium text-sm text-neutral-700 block">$${subtotalItem.toFixed(2)}</span>
+					<button class="btn-eliminar text-[10px] text-neutral-400 hover:text-red-400 mt-1 uppercase font-medium tracking-wider" data-index="${index}">Eliminar</button>
+				</div>
+			`;
+			itemsListContainer.appendChild(itemRow);
+		});
+
+		// Actualizar tarjeta del resumen lateral
+		summaryCount.innerText = prendasTotales.toString();
+		summaryTotal.innerText = `$${totalAcumulado.toFixed(2)}`;
+
+		// Configurar los escuchadores de eventos para los botones dinámicos creados arriba
+		configurarEventosBotones();
+	}
+
+	function configurarEventosBotones() {
+		// Botón Sumar Cantidad
+		document.querySelectorAll('.btn-sumar').forEach(btn => {
+			btn.addEventListener('click', (e) => {
+				const index = parseInt(e.currentTarget.getAttribute('data-index'));
+				carrito[index].cantidad += 1;
+				guardarYRefrescar();
+			});
+		});
+
+		// Botón Restar Cantidad
+		document.querySelectorAll('.btn-restar').forEach(btn => {
+			btn.addEventListener('click', (e) => {
+				const index = parseInt(e.currentTarget.getAttribute('data-index'));
+				if (carrito[index].cantidad > 1) {
+					carrito[index].cantidad -= 1;
+				} else {
+					carrito.splice(index, 1); // Si baja de 1, se remueve el producto entero
+				}
+				guardarYRefrescar();
+			});
+		});
+
+		// Botón Eliminar Fila por completo
+		document.querySelectorAll('.btn-eliminar').forEach(btn => {
+			btn.addEventListener('click', (e) => {
+				const index = parseInt(e.currentTarget.getAttribute('data-index'));
+				carrito.splice(index, 1);
+				guardarYRefrescar();
+			});
+		});
+	}
+
+	function guardarYRefrescar() {
+		localStorage.setItem('carrito', JSON.stringify(carrito));
+		renderizarCarrito();
+	}
+
+	// Botón Vaciar Carrito por completo
+	document.getElementById('clear-cart-btn').addEventListener('click', () => {
+		if(confirm('¿Segura que deseas remover todas las prendas de tu bolsa de compras?')) {
+			carrito = [];
+			guardarYRefrescar();
+		}
+	});
+
+	// Botón Finalizar Compra (Simulación del Checkout)
+	document.getElementById('checkout-btn').addEventListener('click', () => {
+		const nombre = document.getElementById('checkout-name').value.trim();
+		const telefono = document.getElementById('checkout-phone').value.trim();
+
+		if(!nombre || !telefono) {
+			alert('⚠️ Por favor, ingresa tu nombre y teléfono para coordinar la entrega de tus prendas.');
+			return;
+		}
+
+		alert(`✨ ¡Muchas gracias por tu compra en Mujercitas, ${nombre}! Tu pedido ha sido procesado con éxito en el navegador. En la fase final conectaremos este botón con el backend para almacenar las órdenes permanentes en MySQL.`);
+		carrito = [];
+		guardarYRefrescar();
+	});
+
+	// Carga inicial automatizada al ingresar a la página
+	renderizarCarrito();
+</script>
