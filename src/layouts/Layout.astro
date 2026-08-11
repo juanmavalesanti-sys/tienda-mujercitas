@@ -7,6 +7,7 @@ interface Props {
 }
 
 const { title } = Astro.props;
+const user = Astro.locals.user;
 ---
 
 <!doctype html>
@@ -31,8 +32,16 @@ const { title } = Astro.props;
 <nav class="hidden md:flex space-x-8 text-sm tracking-widest uppercase items-center">
 	<a href="/" class="hover:text-[#FFD1DC] transition-colors">Inicio</a>
 	<a href="/catalogo" class="hover:text-[#FFD1DC] transition-colors">Catálogo</a>
-	<!-- Nuevo botón sutil para ir a la pantalla de Login -->
-	<a href="/login" class="text-xs border border-neutral-200 px-4 py-1.5 rounded-sm hover:bg-neutral-50 transition-all font-semibold text-neutral-500">Ingresar</a>
+	{user ? (
+		<>
+			{user.rol === 'admin' && (
+				<a href="/admin" class="text-xs border border-neutral-200 px-4 py-1.5 rounded-sm hover:bg-neutral-50 transition-all font-semibold text-neutral-500">Panel admin</a>
+			)}
+			<button id="nav-logout-btn" class="text-xs border border-neutral-200 px-4 py-1.5 rounded-sm hover:bg-neutral-50 transition-all font-semibold text-neutral-500">Cerrar sesión</button>
+		</>
+	) : (
+		<a href="/login" class="text-xs border border-neutral-200 px-4 py-1.5 rounded-sm hover:bg-neutral-50 transition-all font-semibold text-neutral-500">Ingresar</a>
+	)}
 </nav>
 
 					<div class="flex items-center space-x-4">
@@ -56,6 +65,16 @@ const { title } = Astro.props;
 
 	</body>
 </html>
+
+<script is:inline>
+	const navLogoutBtn = document.getElementById('nav-logout-btn');
+	if (navLogoutBtn) {
+		navLogoutBtn.addEventListener('click', async () => {
+			await fetch('/api/logout', { method: 'POST' });
+			window.location.href = '/login';
+		});
+	}
+</script>
 
 <style is:global>
 	h1, h2, h3 {

@@ -47,12 +47,21 @@ import Layout from '../layouts/Layout.astro';
 					</div>
 				</div>
 
-				<!-- Formulario sutil de datos mínimos para simular el checkout -->
+				<!-- Formulario de datos de entrega para el checkout -->
 				<div class="mt-6 pt-6 border-t border-neutral-200/60 space-y-3">
 					<h4 class="text-[10px] uppercase tracking-widest text-neutral-400 font-bold">Datos de entrega</h4>
 					<input type="text" id="checkout-name" placeholder="Nombre completo" class="w-full text-xs p-3 border border-neutral-200 rounded-sm bg-white focus:outline-none focus:border-[#FFD1DC] transition-colors" />
 					<input type="tel" id="checkout-phone" placeholder="Teléfono de contacto" class="w-full text-xs p-3 border border-neutral-200 rounded-sm bg-white focus:outline-none focus:border-[#FFD1DC] transition-colors" />
+					<textarea id="checkout-address" rows="2" placeholder="Dirección de envío completa" class="w-full text-xs p-3 border border-neutral-200 rounded-sm bg-white focus:outline-none focus:border-[#FFD1DC] transition-colors resize-none"></textarea>
+					<select id="checkout-payment-method" class="w-full text-xs p-3 border border-neutral-200 rounded-sm bg-white focus:outline-none focus:border-[#FFD1DC] transition-colors cursor-pointer text-neutral-700">
+						<option value="">-- Método de pago --</option>
+						<option value="transferencia">Transferencia bancaria</option>
+						<option value="yape">Yape</option>
+						<option value="plin">Plin</option>
+					</select>
 				</div>
+
+				<p id="checkout-error" class="text-xs text-red-500 font-medium mt-3 hidden"></p>
 
 				<button id="checkout-btn" class="w-full bg-neutral-800 text-white py-4 text-xs tracking-widest uppercase font-bold hover:bg-[#FFD1DC] hover:text-neutral-800 transition-all duration-300 rounded-sm shadow-md mt-6">
 					Finalizar Compra
@@ -191,19 +200,59 @@ import Layout from '../layouts/Layout.astro';
 		}
 	});
 
-	// Botón Finalizar Compra (Simulación del Checkout)
-	document.getElementById('checkout-btn').addEventListener('click', () => {
-		const nombre = document.getElementById('checkout-name').value.trim();
-		const telefono = document.getElementById('checkout-phone').value.trim();
+	// Botón Finalizar Compra (checkout real contra MySQL)
+	const checkoutBtn = document.getElementById('checkout-btn');
+	const checkoutError = document.getElementById('checkout-error');
 
-		if(!nombre || !telefono) {
-			alert('⚠️ Por favor, ingresa tu nombre y teléfono para coordinar la entrega de tus prendas.');
+	function mostrarErrorCheckout(mensaje) {
+		checkoutError.innerText = mensaje;
+		checkoutError.classList.remove('hidden');
+	}
+
+	checkoutBtn.addEventListener('click', async () => {
+		const cliente_nombre = document.getElementById('checkout-name').value.trim();
+		const cliente_telefono = document.getElementById('checkout-phone').value.trim();
+		const direccion_envio = document.getElementById('checkout-address').value.trim();
+		const metodo_pago = document.getElementById('checkout-payment-method').value;
+
+		checkoutError.classList.add('hidden');
+
+		if (!cliente_nombre || !cliente_telefono || !direccion_envio || !metodo_pago) {
+			mostrarErrorCheckout('⚠️ Completa nombre, teléfono, dirección y método de pago.');
 			return;
 		}
 
-		alert(`✨ ¡Muchas gracias por tu compra en Mujercitas, ${nombre}! Tu pedido ha sido procesado con éxito en el navegador. En la fase final conectaremos este botón con el backend para almacenar las órdenes permanentes en MySQL.`);
-		carrito = [];
-		guardarYRefrescar();
+		const items = carrito.map((item) => ({ id: Number(item.id), cantidad: item.cantidad }));
+		checkoutBtn.disabled = true;
+
+		try {
+			const respuesta = await fetch('/api/checkout', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ cliente_nombre, cliente_telefono, direccion_envio, metodo_pago, items }),
+			});
+			const resultado = await respuesta.json();
+
+			if (respuesta.ok && resultado.success) {
+				carrito = [];
+				localStorage.setItem('carrito', '[]');
+				window.location.href = `/pedido/${resultado.token}`;
+				return;
+			}
+
+			if (respuesta.status === 409 && resultado.error === 'stock_insuficiente') {
+				const detalle = (resultado.detalles || [])
+					.map((d) => `${d.nombre || 'Producto'}: pediste ${d.solicitado}, quedan ${d.disponible}`)
+					.join(' · ');
+				mostrarErrorCheckout(`⚠️ Stock insuficiente. ${detalle}`);
+			} else {
+				mostrarErrorCheckout(`⚠️ ${resultado.error || 'No se pudo procesar el pedido.'}`);
+			}
+		} catch (error) {
+			mostrarErrorCheckout('❌ Error de conexión. Inténtalo de nuevo.');
+		} finally {
+			checkoutBtn.disabled = false;
+		}
 	});
 
 	// Carga inicial automatizada al ingresar a la página

@@ -5,7 +5,7 @@ import Layout from '../layouts/Layout.astro';
 
 <Layout title="Iniciar Sesión">
 	<section class="max-w-md mx-auto px-4 py-20 flex-grow flex flex-col justify-center animate-fade-in">
-		
+
 		<!-- Contenedor del Formulario Minimalista -->
 		<div class="bg-white border border-neutral-100 p-8 rounded-sm shadow-xs">
 			<div class="text-center mb-8">
@@ -25,19 +25,12 @@ import Layout from '../layouts/Layout.astro';
 					<input type="password" id="login-password" required placeholder="••••••••" class="w-full text-xs p-3 border border-neutral-200 rounded-sm bg-neutral-50/50 focus:outline-none focus:border-[#FFD1DC] transition-colors" />
 				</div>
 
-				<button type="submit" class="w-full bg-neutral-800 text-white py-4 text-xs tracking-widest uppercase font-bold hover:bg-[#FFD1DC] hover:text-neutral-800 transition-all duration-300 rounded-sm shadow-md mt-2">
+				<p id="login-error" class="text-xs text-red-500 font-medium hidden"></p>
+
+				<button type="submit" id="login-submit-btn" class="w-full bg-neutral-800 text-white py-4 text-xs tracking-widest uppercase font-bold hover:bg-[#FFD1DC] hover:text-neutral-800 transition-all duration-300 rounded-sm shadow-md mt-2">
 					Iniciar Sesión
 				</button>
 			</form>
-
-			<!-- Datos de ayuda rápidos en el pie del formulario -->
-			<div class="mt-6 pt-6 border-t border-neutral-100 text-center space-y-2">
-				<p class="text-[10px] text-neutral-400 font-light">💡 Cuenta de Administradora Maestra para pruebas:</p>
-				<div class="bg-neutral-50 p-2 rounded-xs text-[10px] font-mono text-neutral-600 inline-block text-left">
-					<strong>User:</strong> admin@mujercitas.com<br/>
-					<strong>Pass:</strong> admin123
-				</div>
-			</div>
 		</div>
 
 	</section>
@@ -51,25 +44,39 @@ import Layout from '../layouts/Layout.astro';
 		countEl.innerText = carrito.reduce((sum, item) => sum + item.cantidad, 0).toString();
 	}
 
-	// Procesar el evento del Login
-	document.getElementById('login-form').addEventListener('submit', (e) => {
+	// Procesar el evento del Login contra el backend real
+	const form = document.getElementById('login-form');
+	const errorEl = document.getElementById('login-error');
+	const submitBtn = document.getElementById('login-submit-btn');
+
+	form.addEventListener('submit', async (e) => {
 		e.preventDefault();
 
 		const email = document.getElementById('login-email').value.trim();
 		const password = document.getElementById('login-password').value;
 
-		// EVALUACIÓN DE CREDENCIALES EXCLUSIVAS
-		if (email === 'admin@mujercitas.com' && password === 'admin123') {
-			// Guardamos una bandera temporal en la memoria del navegador para recordar que eres admin
-			localStorage.setItem('usuario_rol', 'admin');
-			
-			alert('✨ ¡Identidad Confirmada! Bienvenido Administrador. Redirigiéndote al Panel de Control...');
-			window.location.href = '/admin'; // Redirección automática al panel seguro
-		} else {
-			// Simulación para un cliente normal
-			localStorage.setItem('usuario_rol', 'user');
-			alert('🛍️ ¡Sesión iniciada con éxito como Cliente! Disfruta de nuestra colección completa.');
-			window.location.href = '/catalogo'; // Redirección automática al catálogo de compras
+		errorEl.classList.add('hidden');
+		submitBtn.disabled = true;
+
+		try {
+			const respuesta = await fetch('/api/login', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email, password })
+			});
+			const resultado = await respuesta.json();
+
+			if (respuesta.ok && resultado.success) {
+				window.location.href = resultado.rol === 'admin' ? '/admin' : '/catalogo';
+			} else {
+				errorEl.innerText = resultado.error || 'No se pudo iniciar sesión.';
+				errorEl.classList.remove('hidden');
+				submitBtn.disabled = false;
+			}
+		} catch (error) {
+			errorEl.innerText = 'Error de conexión. Inténtalo de nuevo.';
+			errorEl.classList.remove('hidden');
+			submitBtn.disabled = false;
 		}
 	});
 </script>

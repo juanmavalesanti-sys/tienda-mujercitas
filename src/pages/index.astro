@@ -1,36 +1,20 @@
 ---
 // src/pages/index.astro
 import Layout from '../layouts/Layout.astro';
-import { Image } from 'astro:assets'; 
+import { Image } from 'astro:assets';
+import pool from '../lib/db.js';
 
 import imgBanner from '../assets/banner-portada.png';
-import imgVestido from '../assets/vestido-rosa.png';
-import imgBlusa from '../assets/blusa-blanca.png';
-import imgChaqueta from '../assets/chaqueta-denim.png';
 
-let productos = [
-  { 
-    id: 1, 
-    nombre: 'Vestido Primavera Rosa', 
-    descripcion: 'Vestido largo y elegante, ideal para destacar con frescura y modernidad.', 
-    precio: 45.99, 
-    imagen: imgVestido 
-  },
-  { 
-    id: 2, 
-    nombre: 'Blusa Minimalista Blanca', 
-    descripcion: 'Blusa clásica de corte impecable, perfecta para un look casual u oficina.', 
-    precio: 29.99, 
-    imagen: imgBlusa 
-  },
-  { 
-    id: 3, 
-    nombre: 'Chaqueta Pastel Denim', 
-    descripcion: 'Casaca ligera de mezclilla con un calce moderno y sofisticado.', 
-    precio: 59.99, 
-    imagen: imgChaqueta 
-  }
-];
+let productos: any[] = [];
+try {
+  const [rows] = (await pool.query(
+    'SELECT id, nombre, descripcion, precio, imagen_url FROM productos ORDER BY id DESC LIMIT 3'
+  )) as any;
+  productos = rows;
+} catch (error) {
+  console.log('Database fallback active.');
+}
 ---
 
 <Layout title="Moda Femenina Minimalista">
@@ -68,9 +52,10 @@ let productos = [
 				<div class="group flex flex-col bg-white border border-neutral-100 p-4 rounded-sm transition-all duration-300 hover:shadow-md">
 					
 					<div class="overflow-hidden bg-neutral-50 rounded-sm mb-5 aspect-[3/4]">
-						<Image 
-							src={prod.imagen} 
-							alt={prod.nombre} 
+						<img
+							src={prod.imagen_url}
+							alt={prod.nombre}
+							loading="lazy"
 							class="w-full h-full object-cover object-center group-hover:scale-103 transition-transform duration-500"
 						/>
 					</div>

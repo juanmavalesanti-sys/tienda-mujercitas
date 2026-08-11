@@ -4,7 +4,7 @@ import Layout from '../layouts/Layout.astro';
 import pool from '../lib/db.js';
 
 // 1. Intentamos traer los registros reales que has ido subiendo a tu MySQL local
-let prendasBase = [];
+let prendasBase: any[] = [];
 try {
   const [rows] = await pool.query('SELECT * FROM productos') as any;
   if (rows && rows.length > 0) {
@@ -24,27 +24,14 @@ if (prendasBase.length === 0) {
   ];
 }
 
-// 3. Multiplicación para rellenar tus 10 filas de 4 columnas (40 prendas en total)
-const FILAS_DESEADAS = 10;
-const COLUMNAS_POR_FILA = 4;
-const TOTAL_PRODUCTOS = FILAS_DESEADAS * COLUMNAS_POR_FILA;
-
-const productos = Array.from({ length: TOTAL_PRODUCTOS }, (_, i) => {
-  const prendaOriginal = prendasBase[i % prendasBase.length];
-  
-  // SOLUCIÓN: Lee directamente el nombre del archivo asignado desde el administrador de MySQL 
-  // Si por alguna razón el campo está vacío, le pone el banner de portada de respaldo
-  const urlImagenClean = prendaOriginal.imagen_url || '/imagenes/banner-portada.png';
-
-  return {
-    id: i + 1,
-    nombre: String(prendaOriginal.nombre) + " v" + String(Math.floor(i / prendasBase.length) + 1),
-    descripcion: prendaOriginal.descripcion,
-    precio: prendaOriginal.precio,
-    imagen: urlImagenClean
-  };
-});
-
+// 3. Mapeo directo 1:1 usando los ids reales de MySQL (sin fabricar productos falsos)
+const productos = prendasBase.map((p) => ({
+  id: p.id,
+  nombre: p.nombre,
+  descripcion: p.descripcion,
+  precio: p.precio,
+  imagen: p.imagen_url || '/imagenes/banner-portada.png',
+}));
 ---
 
 <Layout title="Catálogo Exclusivo">

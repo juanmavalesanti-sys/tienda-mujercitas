@@ -3,6 +3,9 @@ dist/
 # generated types
 .astro/
 
+# imágenes subidas desde el panel admin (contenido de usuario, no código fuente)
+uploads/
+
 # dependencies
 node_modules/
 
